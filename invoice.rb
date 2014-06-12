@@ -3,6 +3,9 @@ require 'yaml'
 require 'optparse'
 require 'net/smtp'
 
+to_name = "Tracey Lester"
+to_email = "traceylester@gmail.com"
+
 pwd = File.read('mail.pwd')
 
 options = {}
@@ -18,6 +21,10 @@ opt_parser = OptionParser.new do |opt|
 
   opt.on("-n","--normal","bill for a normal month") do
     options[:normal] = true
+  end
+
+  opt.on("--nomail", "do not send email") do
+    options[:nomail] = true
   end
 
   opt.on("-h","--help","help") do
@@ -178,11 +185,16 @@ Prawn::Document.generate(inv_file) do |pdf|
 
 end
 
+if options[:nomail]
+  puts "Not Mailing"
+  exit
+end
+
 marker = "AUNIQUEMARKER"
 
 part1 = <<EOF
 From: Kevin Lester <kevin@e-kevin.com>
-To: Tracey Lester<traceylester@gmail.com>
+To: #{to_name} <#{to_email}>
 Subject: W.O.R.K invoice for #{Time.now.strftime('%B')} 
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary=#{marker}
@@ -193,10 +205,7 @@ part2 = <<EOF
 Content-Type: text/plain
 Content-Transfer-Encoding:8bit
 
-Here is your next invoice. Please DO NOT REPLY to this email. If you have any questions please contact 
-Kevin Lester
-kevin@e-kevin.com
-678-357-3319
+Here is your next invoice. Please DO NOT REPLY to this email. If you have any questions please contact Kevin Lester at kevin@e-kevin.com or 678-357-3319
 --#{marker}
 EOF
 
@@ -204,7 +213,7 @@ filecontent = File.read(inv_file)
 encodedcontent = [filecontent].pack("m")   # base64
 
 part3 = <<EOF
-Content-Type: multipart/mixed; name=\”#{inv_file}\”
+Content-Type: multipart/mixed; name="#{inv_file}"
 Content-Transfer-Encoding:base64
 Content-Disposition: attachment; filename="#{File.basename inv_file}"
 #{encodedcontent}
@@ -215,6 +224,6 @@ message = part1 + part2 + part3
 smtp = Net::SMTP.new 'smtp.gmail.com', 587
 smtp.enable_starttls
 smtp.start('gmail.com', 'work.app.invoice@gmail.com', pwd, :login)
-smtp.send_message message, 'kevin@e-kevin.com', 'traceylester@kevin.com', 'kevin.thehick@gmail.com'
+smtp.send_message message, 'kevin@e-kevin.com', to_email, 'kevin@e-kevin.com'
 smtp.finish
  
